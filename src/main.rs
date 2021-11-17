@@ -6,6 +6,7 @@ use std::env;
 
 mod util;
 mod route;
+mod queue;
 mod ws;
 
 #[actix_web::main]
