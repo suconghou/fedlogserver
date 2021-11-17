@@ -1,7 +1,12 @@
+#[macro_use]
+extern crate lazy_static;
+
 use actix_web::{middleware, App, HttpServer};
 use std::env;
 
+mod util;
 mod route;
+mod ws;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -10,6 +15,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(middleware::DefaultHeaders::new().header("access-control-allow-origin", "*"))
             .service(route::hello)
+            .service(route::ws)
             .service(route::error_log)
     })
     .bind(addr)?

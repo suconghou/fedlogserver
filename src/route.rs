@@ -1,44 +1,30 @@
-use actix::{Actor, StreamHandler};
-use actix_web::{get, post, web::Bytes, Error, HttpResponse, Responder};
-use actix_web_actors::ws::{Message, ProtocolError, WebsocketContext};
+use actix_web::{get, post, web, Error,HttpRequest, HttpResponse, Responder};
 
-pub struct WsConn {
-    pub nick: String,
-}
+use crate::{util::uniqid, ws::{WsConn}};
 
-impl Actor for WsConn {
-    type Context = WebsocketContext<Self>;
-    /// 连接上
-    fn started(&mut self, _: &mut Self::Context) {
-        println!("{} join!", self.nick);
-    }
-
-    /// 断开连接
-    fn stopped(&mut self, _: &mut Self::Context) {
-        println!("{} exit!", self.nick);
-    }
-}
-
-/// Handler for Message message
-impl StreamHandler<Result<Message, ProtocolError>> for WsConn {
-    fn handle(&mut self, msg: Result<Message, ProtocolError>, ctx: &mut Self::Context) {
-        match msg {
-            Ok(Message::Ping(msg)) => ctx.pong(&msg),
-            Ok(Message::Text(text)) => ctx.text(text),
-            Ok(Message::Binary(bin)) => ctx.binary(bin),
-            _ => (),
-        }
-    }
-}
 
 #[get("/")]
 async fn hello() -> impl Responder {
     HttpResponse::Ok().body("Hello world!")
 }
 
-#[post("/stat/error_log/")]
-async fn error_log(bytes: Bytes) -> impl Responder {
+
+#[get("/stat/error_log/ws/{group:[\\w\\-]{1,20}}")]
+async fn ws( req: HttpRequest,
+    stream: web::Payload,info: web::Path<String>) -> impl Responder {
+    let info = info.into_inner();
+    println!("Hello, {:?}!\nYou are user \n", &info);
+    let conn = WsConn {
+        id: uniqid(),
+        group:info,
+    };
+    actix_web_actors::ws::start(conn, &req, stream)
+}
+
+#[post("/stat/error_log/{group:[\\w\\-]{1,20}}")]
+async fn error_log(bytes: web::Bytes,info:web::Path<String>) -> impl Responder {
+    let info = info.into_inner();
     std::str::from_utf8(&bytes)
         .map_err(Error::from)
-        .map(|name| format!("Hello, {}!\nYou are user \n", name))
+        .map(|name| format!("Hello, {} {}!\nYou are user \n",info, name))
 }
