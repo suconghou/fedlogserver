@@ -15,7 +15,12 @@ async fn hello() -> impl Responder {
 #[get("/stat/error_log/status")]
 async fn status() -> impl Responder {
     let data = USERS.stat();
-    HttpResponse::Ok().json(data)
+    HttpResponse::Ok()
+        .header(
+            "Cache-Control",
+            format!("public,max-age={}", QUEUE.read().unwrap().len()),
+        )
+        .json(data)
 }
 
 #[get("/stat/error_log/ws/{group:[\\w\\-]{1,20}}")]
