@@ -4,9 +4,9 @@ extern crate lazy_static;
 use actix_web::{middleware, App, HttpServer};
 use std::env;
 
-mod util;
-mod route;
 mod queue;
+mod route;
+mod util;
 mod ws;
 
 #[actix_web::main]
@@ -16,6 +16,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(middleware::DefaultHeaders::new().header("access-control-allow-origin", "*"))
             .service(route::hello)
+            .service(route::status)
             .service(route::ws)
             .service(route::error_log)
     })
@@ -25,7 +26,7 @@ async fn main() -> std::io::Result<()> {
 }
 
 fn opt() -> String {
-    let mut opts: Vec<String> = vec!["127.0.0.1:8080".to_string()];
+    let mut opts: Vec<String> = vec![env::var("ADDR").unwrap_or("127.0.0.1:8080".to_string())];
     let mut index = 0;
     let mut first = true;
     for argument in env::args() {

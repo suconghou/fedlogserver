@@ -1,12 +1,16 @@
 use actix::{Actor, Addr, AsyncContext, Handler, StreamHandler};
+use actix_web::web::Bytes;
 use actix_web_actors::ws::{Message, ProtocolError, WebsocketContext};
-use std::{collections::HashMap, sync::RwLock};
+use std::{
+    collections::HashMap,
+    sync::{Arc, RwLock},
+};
 
 use crate::queue::Queue;
 
 lazy_static! {
     pub static ref USERS: Conns = Conns::new();
-    pub static ref QUEUE: RwLock<Queue<GroupMsg>> = RwLock::new(Queue::new());
+    pub static ref QUEUE: RwLock<Queue<Arc<GroupMsg>>> = RwLock::new(Queue::new());
 }
 
 pub struct Conns {
@@ -18,6 +22,7 @@ pub struct Conns {
 pub struct GroupMsg {
     pub group: String,
     pub data: String,
+    pub bytes: Bytes,
 }
 
 impl Conns {
@@ -36,14 +41,25 @@ impl Conns {
         u.remove(&id);
     }
 
-    fn each(&self, group: &String, data: String) {
+    fn each(&self, group: &String, data: String, bin: Bytes) {
         let u = self.data.read().unwrap();
+        let msg = Arc::new(GroupMsg {
+            group: group.clone(),
+            data,
+            bytes: bin,
+        });
         for item in u.values() {
-            item.do_send(GroupMsg {
-                group: group.clone(),
-                data: data.clone(),
-            })
+            item.do_send(msg.clone());
         }
+    }
+
+    pub fn stat(&self) -> Vec<u64> {
+        let u = self.data.read().unwrap();
+        let mut s: Vec<u64> = vec![];
+        for key in u.keys() {
+            s.push(*key);
+        }
+        return s;
     }
 }
 
@@ -71,21 +87,26 @@ impl Actor for WsConn {
 impl StreamHandler<Result<Message, ProtocolError>> for WsConn {
     fn handle(&mut self, msg: Result<Message, ProtocolError>, ctx: &mut Self::Context) {
         match msg {
-            Ok(Message::Text(text)) => USERS.each(&self.group, text),
+            Ok(Message::Text(text)) => USERS.each(&self.group, text, Bytes::new()),
             Ok(Message::Ping(msg)) => ctx.pong(&msg),
-            Ok(Message::Binary(bin)) => ctx.binary(bin),
+            Ok(Message::Binary(bin)) => USERS.each(&self.group, "".to_owned(), bin),
             Ok(Message::Close(reason)) => ctx.close(reason),
             _ => (),
         }
     }
 }
 
-impl Handler<GroupMsg> for WsConn {
+impl Handler<Arc<GroupMsg>> for WsConn {
     type Result = ();
 
-    fn handle(&mut self, gm: GroupMsg, ctx: &mut Self::Context) -> Self::Result {
+    fn handle(&mut self, gm: Arc<GroupMsg>, ctx: &mut Self::Context) -> Self::Result {
         if self.group == gm.group {
-            ctx.text(gm.data);
+            if gm.data != "" {
+                ctx.text(gm.data.clone());
+            }
+            if gm.bytes.len() > 0 {
+                ctx.binary(gm.bytes.clone())
+            }
         }
     }
 }
