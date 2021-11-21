@@ -2,7 +2,7 @@
 extern crate lazy_static;
 
 use actix_web::{middleware, App, HttpServer};
-use std::env;
+use std::{env, thread};
 
 mod queue;
 mod route;
@@ -11,6 +11,7 @@ mod ws;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    thread::spawn(ws::taskloop);
     let addr = opt();
     HttpServer::new(|| {
         App::new()

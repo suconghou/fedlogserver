@@ -5,12 +5,13 @@ use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
 };
+use std::{thread, time::Duration};
 
 use crate::queue::Queue;
 
 lazy_static! {
     pub static ref USERS: Conns = Conns::new();
-    pub static ref QUEUE: RwLock<Queue<Arc<GroupMsg>>> = RwLock::new(Queue::new());
+    pub static ref QUEUE: RwLock<Queue<Arc<QueueItem>>> = RwLock::new(Queue::new());
 }
 
 pub struct Conns {
@@ -23,6 +24,12 @@ pub struct GroupMsg {
     pub group: String,
     pub data: String,
     pub bytes: Bytes,
+}
+
+pub struct QueueItem {
+    pub ua: String,
+    pub ip: String,
+    pub data: GroupMsg,
 }
 
 impl Conns {
@@ -108,5 +115,24 @@ impl Handler<Arc<GroupMsg>> for WsConn {
                 ctx.binary(gm.bytes.clone())
             }
         }
+    }
+}
+
+fn get_item() -> Option<Arc<QueueItem>> {
+    if QUEUE.read().unwrap().is_empty() {
+        return None;
+    }
+    QUEUE.write().unwrap().pop()
+}
+
+pub fn taskloop() {
+    loop {
+        if let Some(v) = get_item() {
+            USERS.each(&v.data.group, v.data.data.clone(), v.data.bytes.clone())
+            // TODO parse json & add ua , ip & save db
+        } else {
+            thread::sleep(Duration::from_secs(1))
+        }
+        thread::sleep(Duration::from_millis(1))
     }
 }
