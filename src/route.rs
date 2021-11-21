@@ -50,6 +50,10 @@ async fn error_log(
         .realip_remote_addr()
         .unwrap_or("")
         .to_owned();
+    let refer = match req.headers().get("Referer") {
+        None => "".to_owned(),
+        Some(v) => v.to_str().unwrap_or_default().to_owned(),
+    };
     if ctype.contains("text") || ctype.contains("json") {
         return match std::str::from_utf8(&bytes) {
             Err(e) => HttpResponse::BadRequest().body(format!("{:?}", e)),
@@ -57,6 +61,7 @@ async fn error_log(
                 QUEUE.write().unwrap().push(Arc::new(QueueItem {
                     ua,
                     ip,
+                    refer,
                     data: GroupMsg {
                         group,
                         data: data.to_string(),
@@ -70,6 +75,7 @@ async fn error_log(
     QUEUE.write().unwrap().push(Arc::new(QueueItem {
         ua,
         ip,
+        refer,
         data: GroupMsg {
             group,
             data: "".to_owned(),

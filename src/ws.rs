@@ -29,6 +29,7 @@ pub struct GroupMsg {
 pub struct QueueItem {
     pub ua: String,
     pub ip: String,
+    pub refer: String,
     pub data: GroupMsg,
 }
 
@@ -129,7 +130,7 @@ pub fn taskloop() {
     loop {
         if let Some(v) = get_item() {
             USERS.each(&v.data.group, v.data.data.clone(), v.data.bytes.clone())
-            // TODO parse json & add ua , ip & save db
+            // TODO parse json & add ua , ip, check refer & save db
         } else {
             thread::sleep(Duration::from_secs(1))
         }
