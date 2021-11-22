@@ -2494,6 +2494,7 @@ dependencies = [
  "lazy_static",
  "mongodb",
  "serde_json",
+ "tokio 1.14.0",
 ]
 
 [[package]]

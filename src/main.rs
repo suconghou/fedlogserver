@@ -2,7 +2,8 @@
 extern crate lazy_static;
 
 use actix_web::{middleware, App, HttpServer};
-use std::{env, thread};
+use std::env;
+use tokio::runtime::Builder;
 
 mod db;
 mod queue;
@@ -12,8 +13,14 @@ mod ws;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    thread::spawn(ws::taskloop);
-    let addr = opt();
+    let rt = Builder::new_multi_thread()
+        .enable_all()
+        .worker_threads(2)
+        .thread_name("db")
+        .thread_stack_size(1024 * 1024)
+        .build()
+        .unwrap();
+    rt.spawn(ws::taskloop());
     HttpServer::new(|| {
         App::new()
             .wrap(middleware::DefaultHeaders::new().header("access-control-allow-origin", "*"))
@@ -22,7 +29,7 @@ async fn main() -> std::io::Result<()> {
             .service(route::ws)
             .service(route::error_log)
     })
-    .bind(addr)?
+    .bind(opt())?
     .run()
     .await
 }

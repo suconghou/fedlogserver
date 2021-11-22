@@ -2,11 +2,11 @@ use actix::{Actor, Addr, AsyncContext, Handler, StreamHandler};
 use actix_web::web::Bytes;
 use actix_web_actors::ws::{Message, ProtocolError, WebsocketContext};
 use serde_json::Value;
+use std::time::Duration;
 use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
 };
-use std::{thread, time::Duration};
 
 use crate::{db, queue::Queue};
 
@@ -134,7 +134,7 @@ pub async fn taskloop() {
         if let Some(v) = get_item() {
             USERS.each(&v.data.group, &v.data.data, v.data.bytes.clone());
             if !store.ok() {
-                thread::sleep(Duration::from_millis(10));
+                tokio::time::sleep(Duration::from_millis(10)).await;
                 continue;
             }
             if v.data.data.len() > 0 && v.data.data.len() < 8192 {
@@ -160,8 +160,8 @@ pub async fn taskloop() {
                 }
             }
         } else {
-            thread::sleep(Duration::from_secs(1));
+            tokio::time::sleep(Duration::from_secs(1)).await;
         }
-        thread::sleep(Duration::from_millis(5));
+        tokio::time::sleep(Duration::from_millis(5)).await;
     }
 }
