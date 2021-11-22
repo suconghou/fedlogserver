@@ -18,8 +18,7 @@ impl StoreTask {
                 database: "".to_owned(),
             };
         }
-        let mut client_options = ClientOptions::parse(uri.unwrap()).await.unwrap();
-        client_options.app_name = Some("ws".to_string());
+        let client_options = ClientOptions::parse(uri.unwrap()).await.unwrap();
         return StoreTask {
             client: Some(Client::with_options(client_options).unwrap()),
             database: db.unwrap(),

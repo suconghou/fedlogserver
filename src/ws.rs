@@ -1,3 +1,4 @@
+use crate::{db, queue::Queue};
 use actix::{Actor, Addr, AsyncContext, Handler, StreamHandler};
 use actix_web::web::Bytes;
 use actix_web_actors::ws::{Message, ProtocolError, WebsocketContext};
@@ -7,8 +8,6 @@ use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
 };
-
-use crate::{db, queue::Queue};
 
 lazy_static! {
     pub static ref USERS: Conns = Conns::new();
@@ -81,13 +80,11 @@ impl Actor for WsConn {
     type Context = WebsocketContext<Self>;
     /// 连接上
     fn started(&mut self, ctx: &mut Self::Context) {
-        println!("{} join!", self.id);
         USERS.insert(self.id, ctx.address());
     }
 
     /// 断开连接
     fn stopped(&mut self, _: &mut Self::Context) {
-        println!("{} exit!", self.id);
         USERS.remove(self.id);
     }
 }
@@ -142,9 +139,13 @@ pub async fn taskloop() {
                 if res.is_object() {
                     res["ip"] = Value::String(v.ip.clone());
                     res["ua"] = Value::String(v.ua.clone());
-                    if res.get("refer").is_none() {
-                        res["refer"] = Value::String(v.refer.clone());
-                    }
+                    res["refer"] = match res.get("refer") {
+                        Some(rr) => match rr.as_str() {
+                            Some(vv) => Value::String(vv.to_string()),
+                            None => Value::String(v.refer.clone()),
+                        },
+                        None => Value::String(v.refer.clone()),
+                    };
                     store.save(&v.data.group, res).await;
                 }
             }
@@ -153,9 +154,13 @@ pub async fn taskloop() {
                 if res.is_object() {
                     res["ip"] = Value::String(v.ip.clone());
                     res["ua"] = Value::String(v.ua.clone());
-                    if res.get("refer").is_none() {
-                        res["refer"] = Value::String(v.refer.clone());
-                    }
+                    res["refer"] = match res.get("refer") {
+                        Some(rr) => match rr.as_str() {
+                            Some(vv) => Value::String(vv.to_string()),
+                            None => Value::String(v.refer.clone()),
+                        },
+                        None => Value::String(v.refer.clone()),
+                    };
                     store.save(&v.data.group, res).await;
                 }
             }

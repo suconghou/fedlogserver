@@ -1,11 +1,9 @@
-use std::sync::Arc;
-
-use actix_web::HttpMessage;
-use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
-
 use crate::ws::QUEUE;
 use crate::ws::USERS;
 use crate::{util::uniqid, ws::GroupMsg, ws::QueueItem, ws::WsConn};
+use actix_web::HttpMessage;
+use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
+use std::sync::Arc;
 
 #[get("/")]
 async fn hello() -> impl Responder {
