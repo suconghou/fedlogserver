@@ -4,6 +4,7 @@ extern crate lazy_static;
 use actix_web::{middleware, App, HttpServer};
 use std::{env, thread};
 
+mod db;
 mod queue;
 mod route;
 mod util;

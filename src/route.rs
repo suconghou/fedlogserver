@@ -64,7 +64,7 @@ async fn error_log(
                     refer,
                     data: GroupMsg {
                         group,
-                        data: data.to_string(),
+                        data: data.trim().to_string(),
                         bytes: web::Bytes::new(),
                     },
                 }));

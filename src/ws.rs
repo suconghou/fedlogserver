@@ -1,13 +1,14 @@
 use actix::{Actor, Addr, AsyncContext, Handler, StreamHandler};
 use actix_web::web::Bytes;
 use actix_web_actors::ws::{Message, ProtocolError, WebsocketContext};
+use serde_json::Value;
 use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
 };
 use std::{thread, time::Duration};
 
-use crate::queue::Queue;
+use crate::{db, queue::Queue};
 
 lazy_static! {
     pub static ref USERS: Conns = Conns::new();
@@ -49,11 +50,11 @@ impl Conns {
         u.remove(&id);
     }
 
-    fn each(&self, group: &String, data: String, bin: Bytes) {
+    fn each(&self, group: &String, data: &str, bin: Bytes) {
         let u = self.data.read().unwrap();
         let msg = Arc::new(GroupMsg {
             group: group.clone(),
-            data,
+            data: data.trim().to_string(),
             bytes: bin,
         });
         for item in u.values() {
@@ -95,9 +96,9 @@ impl Actor for WsConn {
 impl StreamHandler<Result<Message, ProtocolError>> for WsConn {
     fn handle(&mut self, msg: Result<Message, ProtocolError>, ctx: &mut Self::Context) {
         match msg {
-            Ok(Message::Text(text)) => USERS.each(&self.group, text, Bytes::new()),
+            Ok(Message::Text(text)) => USERS.each(&self.group, &text, Bytes::new()),
             Ok(Message::Ping(msg)) => ctx.pong(&msg),
-            Ok(Message::Binary(bin)) => USERS.each(&self.group, "".to_owned(), bin),
+            Ok(Message::Binary(bin)) => USERS.each(&self.group, "", bin),
             Ok(Message::Close(reason)) => ctx.close(reason),
             _ => (),
         }
@@ -109,7 +110,7 @@ impl Handler<Arc<GroupMsg>> for WsConn {
 
     fn handle(&mut self, gm: Arc<GroupMsg>, ctx: &mut Self::Context) -> Self::Result {
         if self.group == gm.group {
-            if gm.data != "" {
+            if gm.data.len() > 0 {
                 ctx.text(gm.data.clone());
             }
             if gm.bytes.len() > 0 {
@@ -119,6 +120,7 @@ impl Handler<Arc<GroupMsg>> for WsConn {
     }
 }
 
+#[inline]
 fn get_item() -> Option<Arc<QueueItem>> {
     if QUEUE.read().unwrap().is_empty() {
         return None;
@@ -126,14 +128,40 @@ fn get_item() -> Option<Arc<QueueItem>> {
     QUEUE.write().unwrap().pop()
 }
 
-pub fn taskloop() {
+pub async fn taskloop() {
+    let store = db::StoreTask::new().await;
     loop {
         if let Some(v) = get_item() {
-            USERS.each(&v.data.group, v.data.data.clone(), v.data.bytes.clone())
-            // TODO parse json & add ua , ip, check refer & save db
+            USERS.each(&v.data.group, &v.data.data, v.data.bytes.clone());
+            if !store.ok() {
+                thread::sleep(Duration::from_millis(10));
+                continue;
+            }
+            if v.data.data.len() > 0 && v.data.data.len() < 8192 {
+                let mut res: Value = serde_json::from_str(&v.data.data).unwrap_or_default();
+                if res.is_object() {
+                    res["ip"] = Value::String(v.ip.clone());
+                    res["ua"] = Value::String(v.ua.clone());
+                    if res.get("refer").is_none() {
+                        res["refer"] = Value::String(v.refer.clone());
+                    }
+                    store.save(&v.data.group, res).await;
+                }
+            }
+            if v.data.bytes.len() > 0 && v.data.bytes.len() < 8192 {
+                let mut res: Value = serde_json::from_slice(&v.data.bytes).unwrap_or_default();
+                if res.is_object() {
+                    res["ip"] = Value::String(v.ip.clone());
+                    res["ua"] = Value::String(v.ua.clone());
+                    if res.get("refer").is_none() {
+                        res["refer"] = Value::String(v.refer.clone());
+                    }
+                    store.save(&v.data.group, res).await;
+                }
+            }
         } else {
-            thread::sleep(Duration::from_secs(1))
+            thread::sleep(Duration::from_secs(1));
         }
-        thread::sleep(Duration::from_millis(1))
+        thread::sleep(Duration::from_millis(5));
     }
 }
