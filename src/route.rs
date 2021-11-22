@@ -1,6 +1,7 @@
 use crate::ws::QUEUE;
 use crate::ws::USERS;
 use crate::{util::uniqid, ws::GroupMsg, ws::QueueItem, ws::WsConn};
+use actix_web::http::header::{CACHE_CONTROL, REFERER, USER_AGENT};
 use actix_web::HttpMessage;
 use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
 use std::sync::Arc;
@@ -15,7 +16,7 @@ async fn status() -> impl Responder {
     let data = USERS.stat();
     HttpResponse::Ok()
         .header(
-            "Cache-Control",
+            CACHE_CONTROL,
             format!("public,max-age={}", QUEUE.read().unwrap().len()),
         )
         .json(data)
@@ -39,7 +40,7 @@ async fn error_log(
 ) -> impl Responder {
     let group = group.into_inner();
     let ctype = req.content_type();
-    let ua = match req.headers().get("User-Agent") {
+    let ua = match req.headers().get(USER_AGENT) {
         None => "".to_owned(),
         Some(v) => v.to_str().unwrap_or_default().to_owned(),
     };
@@ -48,7 +49,7 @@ async fn error_log(
         .realip_remote_addr()
         .unwrap_or("")
         .to_owned();
-    let refer = match req.headers().get("Referer") {
+    let refer = match req.headers().get(REFERER) {
         None => "".to_owned(),
         Some(v) => v.to_str().unwrap_or_default().to_owned(),
     };

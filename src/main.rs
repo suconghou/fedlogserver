@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate lazy_static;
 
-use actix_web::{middleware, App, HttpServer};
+use actix_web::{http::header::ACCESS_CONTROL_ALLOW_ORIGIN, middleware, App, HttpServer};
 use std::env;
 use tokio::runtime::Builder;
 
@@ -23,7 +23,7 @@ async fn main() -> std::io::Result<()> {
     rt.spawn(ws::taskloop());
     HttpServer::new(|| {
         App::new()
-            .wrap(middleware::DefaultHeaders::new().header("access-control-allow-origin", "*"))
+            .wrap(middleware::DefaultHeaders::new().header(ACCESS_CONTROL_ALLOW_ORIGIN, "*"))
             .service(route::hello)
             .service(route::status)
             .service(route::ws)
