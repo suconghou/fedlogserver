@@ -1,5 +1,5 @@
 [package]
-name = "ws"
+name = "fedlogserver"
 version = "0.1.0"
 edition = "2021"
 
@@ -12,3 +12,7 @@ lazy_static = "1"
 mongodb = "2"
 serde_json = "1"
 tokio = "1"
+
+[profile.release]
+opt-level = "z"
+lto = true

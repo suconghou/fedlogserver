@@ -67,7 +67,7 @@ async fn error_log(
                         bytes: web::Bytes::new(),
                     },
                 }));
-                HttpResponse::Accepted().body("")
+                HttpResponse::Ok().body("")
             }
         };
     }
@@ -81,5 +81,5 @@ async fn error_log(
             bytes,
         },
     }));
-    HttpResponse::Accepted().body("")
+    HttpResponse::Ok().body("")
 }
