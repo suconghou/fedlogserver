@@ -1,3 +1,4 @@
+use crate::util;
 use crate::{db, queue::Queue};
 use actix::{Actor, Addr, AsyncContext, Handler, StreamHandler};
 use actix_web::web::Bytes;
@@ -126,6 +127,7 @@ fn get_item() -> Option<Arc<QueueItem>> {
 }
 
 fn tidy_it(res: &mut Value, v: &Arc<QueueItem>) {
+    res["time"] = serde_json::json!(util::unix_time());
     res["ip"] = Value::String(v.ip.clone());
     res["ua"] = Value::String(v.ua.clone());
     res["refer"] = match res.get("refer") {
