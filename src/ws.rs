@@ -125,6 +125,24 @@ fn get_item() -> Option<Arc<QueueItem>> {
     QUEUE.write().unwrap().pop()
 }
 
+fn tidy_it(res: &mut Value, v: &Arc<QueueItem>) {
+    res["ip"] = Value::String(v.ip.clone());
+    res["ua"] = Value::String(v.ua.clone());
+    res["refer"] = match res.get("refer") {
+        Some(rr) => match rr.as_str() {
+            Some(vv) => {
+                if vv.len() > 0 {
+                    Value::String(vv.to_string())
+                } else {
+                    Value::String(v.refer.clone())
+                }
+            }
+            None => Value::String(v.refer.clone()),
+        },
+        None => Value::String(v.refer.clone()),
+    };
+}
+
 pub async fn taskloop() {
     let store = db::StoreTask::new().await;
     loop {
@@ -137,30 +155,14 @@ pub async fn taskloop() {
             if v.data.data.len() > 0 && v.data.data.len() < 8192 {
                 let mut res: Value = serde_json::from_str(&v.data.data).unwrap_or_default();
                 if res.is_object() {
-                    res["ip"] = Value::String(v.ip.clone());
-                    res["ua"] = Value::String(v.ua.clone());
-                    res["refer"] = match res.get("refer") {
-                        Some(rr) => match rr.as_str() {
-                            Some(vv) => Value::String(vv.to_string()),
-                            None => Value::String(v.refer.clone()),
-                        },
-                        None => Value::String(v.refer.clone()),
-                    };
+                    tidy_it(&mut res, &v);
                     store.save(&v.data.group, res).await;
                 }
             }
             if v.data.bytes.len() > 0 && v.data.bytes.len() < 8192 {
                 let mut res: Value = serde_json::from_slice(&v.data.bytes).unwrap_or_default();
                 if res.is_object() {
-                    res["ip"] = Value::String(v.ip.clone());
-                    res["ua"] = Value::String(v.ua.clone());
-                    res["refer"] = match res.get("refer") {
-                        Some(rr) => match rr.as_str() {
-                            Some(vv) => Value::String(vv.to_string()),
-                            None => Value::String(v.refer.clone()),
-                        },
-                        None => Value::String(v.refer.clone()),
-                    };
+                    tidy_it(&mut res, &v);
                     store.save(&v.data.group, res).await;
                 }
             }
