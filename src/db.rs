@@ -18,9 +18,9 @@ impl StoreTask {
                 database: "".to_owned(),
             };
         }
-        let client_options = ClientOptions::parse(uri.unwrap()).await.unwrap();
+        let client_options = ClientOptions::parse(uri.unwrap()).await.unwrap_or_default();
         return StoreTask {
-            client: Some(Client::with_options(client_options).unwrap()),
+            client: Client::with_options(client_options).ok(),
             database: db.unwrap(),
         };
     }
