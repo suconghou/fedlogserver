@@ -1,4 +1,4 @@
-use mongodb::bson::{to_bson, Document};
+use mongodb::bson::{to_bson, DateTime, Document};
 use mongodb::{options::ClientOptions, Client};
 use serde_json::Value;
 use std::env;
@@ -33,17 +33,20 @@ impl StoreTask {
         if self.client.is_none() {
             return;
         }
-        let res = to_bson(&data);
-        if res.is_err() {
-            return;
-        }
-        let db = self.client.as_ref().unwrap().database(&self.database);
-        let collection = db.collection::<Document>(collection);
-        let r = collection
-            .insert_one(res.unwrap().as_document().unwrap(), None)
-            .await;
-        if r.is_err() {
-            println!("{:?}", r.err());
+        match to_bson(&data) {
+            Ok(mut b) => match b.as_document_mut() {
+                Some(doc) => {
+                    doc.insert("createdAt", DateTime::now());
+                    let db = self.client.as_ref().unwrap().database(&self.database);
+                    let collection = db.collection::<Document>(collection);
+                    let r = collection.insert_one(doc, None).await;
+                    if r.is_err() {
+                        println!("{:?}", r.err());
+                    }
+                }
+                None => (),
+            },
+            Err(e) => println!("{:?}", e),
         }
     }
 }
