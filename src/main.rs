@@ -1,7 +1,9 @@
 #[macro_use]
 extern crate lazy_static;
 
-use actix_web::{http::header::ACCESS_CONTROL_ALLOW_ORIGIN, middleware, App, HttpServer};
+use actix_web::{
+    http::header::ACCESS_CONTROL_ALLOW_ORIGIN, middleware, web::Data, App, HttpServer,
+};
 use std::{env, sync::Arc};
 use tokio::runtime::Builder;
 
@@ -24,7 +26,7 @@ async fn main() -> std::io::Result<()> {
     rt.spawn(ws::taskloop(db_conn.clone()));
     HttpServer::new(move || {
         App::new()
-            .data(db_conn.clone())
+            .app_data(Data::new(db_conn.clone()))
             .wrap(middleware::DefaultHeaders::new().header(ACCESS_CONTROL_ALLOW_ORIGIN, "*"))
             .service(route::hello)
             .service(route::status)

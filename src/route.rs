@@ -37,10 +37,10 @@ async fn hello() -> impl Responder {
 async fn status() -> impl Responder {
     let data = USERS.stat();
     HttpResponse::Ok()
-        .header(
+        .insert_header((
             CACHE_CONTROL,
             format!("public,max-age={}", QUEUE.read().unwrap().len()),
-        )
+        ))
         .json(data)
 }
 
@@ -54,8 +54,10 @@ async fn aggregate(
     let res = db_conn
         .aggregate(&group, Arc::new(params.into_inner()))
         .await;
-    res.map_err(|err| HttpResponse::InternalServerError().body(format!("{:?}", err)))
-        .map(|res| HttpResponse::Ok().json(res))
+    if res.is_err() {
+        return HttpResponse::InternalServerError().body(format!("{:?}", res.err()));
+    }
+    HttpResponse::Ok().json(res.unwrap())
 }
 
 #[get("/stat/error_log/ws/{group:[\\w\\-]{1,20}}")]

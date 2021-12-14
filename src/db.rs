@@ -101,6 +101,9 @@ impl DbConnection {
                     n=>n,
                 } ,
             });
+            pipeline.push(doc! {
+                "$project":{"_id":0,"createdAt":0},
+            });
         }
         let options = None;
         let collection = self.db.as_ref().unwrap().collection::<Document>(collection);
@@ -134,5 +137,7 @@ fn build_match_query(params: Arc<QueryOptions>) -> Document {
     if params.href.is_some() {
         _match.insert("href", params.href.as_ref().unwrap());
     }
-    _match
+    doc! {
+        "$match":_match,
+    }
 }
