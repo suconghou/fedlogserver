@@ -11,7 +11,7 @@
 配置 `MONGODB_URI` 和 `MONGODB_DATABASE`后，开启db功能
 
 ```bash
-export MONGODB_URI='mongodb://192.168.0.3/test?appName=ws' MONGODB_DATABASE="test"
+export MONGODB_URI='mongodb://192.168.0.3/test?authSource=admin&appName=ws' MONGODB_DATABASE="test"
 ```
 
 ## 查询
