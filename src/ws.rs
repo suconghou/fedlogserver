@@ -1,5 +1,6 @@
+use crate::db::DbConnection;
+use crate::queue::Queue;
 use crate::util;
-use crate::{db, queue::Queue};
 use actix::{Actor, Addr, AsyncContext, Handler, StreamHandler};
 use actix_web::web::Bytes;
 use actix_web_actors::ws::{Message, ProtocolError, WebsocketContext};
@@ -145,8 +146,7 @@ fn tidy_it(res: &mut Value, v: &Arc<QueueItem>) {
     };
 }
 
-pub async fn taskloop() {
-    let store = db::StoreTask::new().await;
+pub async fn taskloop(store: Arc<DbConnection>) {
     loop {
         if let Some(v) = get_item() {
             USERS.each(&v.data.group, &v.data.data, v.data.bytes.clone());
