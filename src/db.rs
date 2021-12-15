@@ -64,7 +64,7 @@ impl DbConnection {
         }
         let mut pipeline = Vec::new();
         pipeline.push(build_match_query(params.clone()));
-        if params.count.is_some() {
+        if params.count.is_some() && params.count.as_ref().unwrap().len() > 0 {
             pipeline.push(doc! {
                 "$count":params.count.as_ref().unwrap(),
             });
@@ -73,7 +73,7 @@ impl DbConnection {
             if params.group.is_some() {
                 pipeline.push(doc! {
                     "$group":{
-                        "_id":params.group.as_ref().unwrap(),
+                        "_id":"$".to_string()+params.group.as_ref().unwrap(),
                         "count":{"$sum":1},
                     }
                 });
@@ -101,9 +101,11 @@ impl DbConnection {
                     n=>n,
                 } ,
             });
-            pipeline.push(doc! {
-                "$project":{"_id":0,"createdAt":0},
-            });
+            if params.group.is_none() {
+                pipeline.push(doc! {
+                    "$project":{"_id":0,"createdAt":0},
+                });
+            }
         }
         let options = None;
         let collection = self.db.as_ref().unwrap().collection::<Document>(collection);
