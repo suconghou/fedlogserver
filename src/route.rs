@@ -17,12 +17,19 @@ pub struct QueryOptions {
     pub cookie: Option<String>,
     pub ua: Option<String>,
     pub href: Option<String>,
+    pub target: Option<String>,
+    pub message: Option<String>,
+    pub refer: Option<String>,
 
     // 计数模式
     pub count: Option<String>,
 
     // group
     pub group: Option<String>,
+    pub sets: Option<String>,
+
+    // 字段选择
+    pub parts: Option<String>,
 
     pub skip: Option<u32>,
     pub limit: Option<u32>,

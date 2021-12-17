@@ -27,6 +27,12 @@ export MONGODB_URI='mongodb://192.168.0.3/test?authSource=admin&appName=ws' MONG
 > ua
 >
 > href
+>
+> target
+>
+> message
+>
+> refer
 
 > hours 限定最近n小时
 
@@ -39,7 +45,8 @@ export MONGODB_URI='mongodb://192.168.0.3/test?authSource=admin&appName=ws' MONG
 **group模式**
 
 > group:"ip"
-
+>
+> sets
 
 **分页**
 

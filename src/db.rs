@@ -71,11 +71,22 @@ impl DbConnection {
         } else {
             // group & sort & skip & limit
             if params.group.is_some() {
-                pipeline.push(doc! {
-                    "$group":{
-                        "_id":"$".to_string()+params.group.as_ref().unwrap(),
-                        "count":{"$sum":1},
+                let mut _g = doc! {
+                    "_id":"$".to_string()+params.group.as_ref().unwrap(),
+                    "count":{"$sum":1},
+                };
+                if params.sets.is_some() {
+                    for ss in params.sets.as_ref().unwrap().split(',') {
+                        _g.insert(
+                            ss,
+                            doc! {
+                                "$addToSet":"$".to_string()+ss,
+                            },
+                        );
                     }
+                }
+                pipeline.push(doc! {
+                    "$group":_g
                 });
                 pipeline.push(doc! {
                     "$sort":{
@@ -102,9 +113,7 @@ impl DbConnection {
                 } ,
             });
             if params.group.is_none() {
-                pipeline.push(doc! {
-                    "$project":{"_id":0,"createdAt":0},
-                });
+                pipeline.push(build_project_query(params));
             }
         }
         let options = None;
@@ -139,7 +148,31 @@ fn build_match_query(params: Arc<QueryOptions>) -> Document {
     if params.href.is_some() {
         _match.insert("href", params.href.as_ref().unwrap());
     }
+    if params.target.is_some() {
+        _match.insert("target", params.target.as_ref().unwrap());
+    }
+    if params.message.is_some() {
+        _match.insert("message", params.message.as_ref().unwrap());
+    }
+    if params.refer.is_some() {
+        _match.insert("refer", params.refer.as_ref().unwrap());
+    }
     doc! {
         "$match":_match,
+    }
+}
+
+fn build_project_query(params: Arc<QueryOptions>) -> Document {
+    let mut _project = doc! {
+        "_id":0,
+        "createdAt":0,
+    };
+    if params.parts.is_some() {
+        for part in params.parts.as_ref().unwrap().split(',') {
+            _project.insert(part, 1);
+        }
+    }
+    doc! {
+        "$project":_project,
     }
 }
