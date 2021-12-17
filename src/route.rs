@@ -17,9 +17,11 @@ pub struct QueryOptions {
     pub cookie: Option<String>,
     pub ua: Option<String>,
     pub href: Option<String>,
+    pub title: Option<String>,
     pub target: Option<String>,
     pub message: Option<String>,
     pub refer: Option<String>,
+    pub exists: Option<String>,
 
     // 计数模式
     pub count: Option<String>,

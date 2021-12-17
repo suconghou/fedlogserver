@@ -148,6 +148,9 @@ fn build_match_query(params: Arc<QueryOptions>) -> Document {
     if params.href.is_some() {
         _match.insert("href", params.href.as_ref().unwrap());
     }
+    if params.title.is_some() {
+        _match.insert("title", params.title.as_ref().unwrap());
+    }
     if params.target.is_some() {
         _match.insert("target", params.target.as_ref().unwrap());
     }
@@ -156,6 +159,17 @@ fn build_match_query(params: Arc<QueryOptions>) -> Document {
     }
     if params.refer.is_some() {
         _match.insert("refer", params.refer.as_ref().unwrap());
+    }
+    if params.exists.is_some() {
+        for ss in params.exists.as_ref().unwrap().split(",") {
+            _match.insert(
+                ss,
+                doc! {
+                    "$exists":true,
+                    "$ne":""
+                },
+            );
+        }
     }
     doc! {
         "$match":_match,
