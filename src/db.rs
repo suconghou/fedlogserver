@@ -171,6 +171,16 @@ fn build_match_query(params: Arc<QueryOptions>) -> Document {
             );
         }
     }
+    if params.not.is_some() {
+        for ss in params.not.as_ref().unwrap().split(',') {
+            _match.insert(
+                ss,
+                doc! {
+                    "$exists":false,
+                },
+            );
+        }
+    }
     doc! {
         "$match":_match,
     }
@@ -182,6 +192,7 @@ fn build_project_query(params: Arc<QueryOptions>) -> Document {
         "createdAt":0,
     };
     if params.parts.is_some() {
+        _project = doc! {"_id":0};
         for part in params.parts.as_ref().unwrap().split(',') {
             _project.insert(part, 1);
         }

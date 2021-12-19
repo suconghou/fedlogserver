@@ -22,6 +22,7 @@ pub struct QueryOptions {
     pub message: Option<String>,
     pub refer: Option<String>,
     pub exists: Option<String>,
+    pub not: Option<String>,
 
     // 计数模式
     pub count: Option<String>,
