@@ -65,7 +65,7 @@ async fn aggregate(
         .aggregate(&group, Arc::new(params.into_inner()))
         .await;
     if res.is_err() {
-        return HttpResponse::InternalServerError().body(format!("{:?}", res.err()));
+        return HttpResponse::InternalServerError().body(format!("{:?}", res.err().unwrap()));
     }
     HttpResponse::Ok().json(res.unwrap())
 }

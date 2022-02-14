@@ -44,7 +44,7 @@ impl DbConnection {
                     let collection = self.db.as_ref().unwrap().collection::<Document>(collection);
                     let r = collection.insert_one(doc, None).await;
                     if r.is_err() {
-                        println!("{:?}", r.err());
+                        println!("{:?}", r.err().unwrap());
                     }
                 }
                 None => (),
