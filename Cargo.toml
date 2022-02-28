@@ -6,8 +6,8 @@ edition = "2021"
 
 [dependencies]
 actix = "0.12"
-actix-web = "4.0.0-beta.14"
-actix-web-actors = "4.0.0-beta.8"
+actix-web = "4.0.1"
+actix-web-actors = "4.0.0"
 lazy_static = "1"
 mongodb = "2"
 serde = "1"
