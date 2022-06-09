@@ -3,40 +3,11 @@ use crate::ws::QUEUE;
 use crate::ws::USERS;
 use crate::{util::uniqid, ws::GroupMsg, ws::QueueItem, ws::WsConn};
 use actix_web::http::header::{CACHE_CONTROL, REFERER, USER_AGENT};
-use actix_web::HttpMessage;
-use actix_web::{get, post, web, HttpRequest, HttpResponse, Responder};
-use serde::Deserialize;
+use actix_web::{get, post, web, HttpMessage, HttpRequest, HttpResponse, Responder};
+use mongodb::bson::Document;
+
 use std::sync::Arc;
 
-#[derive(Deserialize)]
-pub struct QueryOptions {
-    // match 相关
-    pub hours: Option<u64>,
-    pub r#type: Option<String>,
-    pub ip: Option<String>,
-    pub cookie: Option<String>,
-    pub ua: Option<String>,
-    pub href: Option<String>,
-    pub title: Option<String>,
-    pub target: Option<String>,
-    pub message: Option<String>,
-    pub refer: Option<String>,
-    pub exists: Option<String>,
-    pub not: Option<String>,
-
-    // 计数模式
-    pub count: Option<String>,
-
-    // group
-    pub group: Option<String>,
-    pub sets: Option<String>,
-
-    // 字段选择
-    pub parts: Option<String>,
-
-    pub skip: Option<u32>,
-    pub limit: Option<u32>,
-}
 
 #[get("/")]
 async fn hello() -> impl Responder {
@@ -56,13 +27,13 @@ async fn status() -> impl Responder {
 
 #[get("/stat/error_log/aggregate/{group:[\\w\\-]{1,20}}")]
 async fn aggregate(
-    params: web::Query<QueryOptions>,
+    params: web::Query<Document>,
     db_conn: web::Data<Arc<DbConnection>>,
     group: web::Path<String>,
 ) -> impl Responder {
     let group = group.into_inner();
     let res = db_conn
-        .aggregate(&group, Arc::new(params.into_inner()))
+        .aggregate(&group, params.into_inner())
         .await;
     if res.is_err() {
         return HttpResponse::InternalServerError().body(format!("{:?}", res.err().unwrap()));

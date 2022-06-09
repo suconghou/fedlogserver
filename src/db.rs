@@ -4,9 +4,7 @@ use mongodb::Database;
 use mongodb::{options::ClientOptions, Client};
 use serde_json::Value;
 use std::env;
-use std::sync::Arc;
 
-use crate::route::QueryOptions;
 use crate::util::recent;
 
 pub struct DbConnection {
@@ -56,65 +54,12 @@ impl DbConnection {
     pub async fn aggregate(
         &self,
         collection: &str,
-        params: Arc<QueryOptions>,
+        params: Document,
     ) -> Result<Vec<Document>, Box<dyn std::error::Error>> {
         let mut result: Vec<Document> = Vec::new();
+        let pipeline = build_query(params);
         if self.db.is_none() {
             return Ok(result);
-        }
-        let mut pipeline = Vec::new();
-        pipeline.push(build_match_query(params.clone()));
-        if params.count.is_some() && params.count.as_ref().unwrap().len() > 0 {
-            pipeline.push(doc! {
-                "$count":params.count.as_ref().unwrap(),
-            });
-        } else {
-            // group & sort & skip & limit
-            if params.group.is_some() {
-                let mut _g = doc! {
-                    "_id":"$".to_string()+params.group.as_ref().unwrap(),
-                    "count":{"$sum":1},
-                };
-                if params.sets.is_some() {
-                    for ss in params.sets.as_ref().unwrap().split(',') {
-                        _g.insert(
-                            ss,
-                            doc! {
-                                "$addToSet":"$".to_string()+ss,
-                            },
-                        );
-                    }
-                }
-                pipeline.push(doc! {
-                    "$group":_g
-                });
-                pipeline.push(doc! {
-                    "$sort":{
-                        "count":-1,
-                    }
-                });
-            } else {
-                pipeline.push(doc! {
-                    "$sort":{
-                        "createdAt":-1,
-                    }
-                });
-            }
-            if params.skip.is_some() {
-                pipeline.push(doc! {
-                    "$skip":params.skip.unwrap(),
-                });
-            }
-            pipeline.push(doc! {
-                "$limit": match params.limit.unwrap_or(100) {
-                    0 => 1,
-                    100.. => 100,
-                    n=>n,
-                } ,
-            });
-            if params.group.is_none() {
-                pipeline.push(build_project_query(params));
-            }
         }
         let options = None;
         let collection = self.db.as_ref().unwrap().collection::<Document>(collection);
@@ -126,78 +71,102 @@ impl DbConnection {
     }
 }
 
-fn build_match_query(params: Arc<QueryOptions>) -> Document {
-    let gt = recent(params.hours.unwrap_or(6));
+fn build_query(params: Document) -> Vec<Document> {
+    let mut pipeline = Vec::new();
+    let hour = params.get_str("$gt").unwrap_or("6").parse().unwrap_or(6);
+    let gt = recent(hour);
     let mut _match = doc! {
         "createdAt":{
             "$gt":DateTime::from_system_time(gt),
         }
     };
-    if params.r#type.is_some() {
-        _match.insert("type", params.r#type.as_ref().unwrap());
-    }
-    if params.ip.is_some() {
-        _match.insert("ip", params.ip.as_ref().unwrap());
-    }
-    if params.cookie.is_some() {
-        _match.insert("cookie", params.cookie.as_ref().unwrap());
-    }
-    if params.ua.is_some() {
-        _match.insert("ua", params.ua.as_ref().unwrap());
-    }
-    if params.href.is_some() {
-        _match.insert("href", params.href.as_ref().unwrap());
-    }
-    if params.title.is_some() {
-        _match.insert("title", params.title.as_ref().unwrap());
-    }
-    if params.target.is_some() {
-        _match.insert("target", params.target.as_ref().unwrap());
-    }
-    if params.message.is_some() {
-        _match.insert("message", params.message.as_ref().unwrap());
-    }
-    if params.refer.is_some() {
-        _match.insert("refer", params.refer.as_ref().unwrap());
-    }
-    if params.exists.is_some() {
-        for ss in params.exists.as_ref().unwrap().split(",") {
-            _match.insert(
-                ss,
-                doc! {
-                    "$exists":true,
-                    "$ne":""
-                },
-            );
+    let mut _group = doc! {};
+    let mut _project = doc! {};
+    let mut _count = doc! {};
+    let mut _sort_limit_skip = doc! {
+        "$sort":{
+            "createdAt":-1,
         }
-    }
-    if params.not.is_some() {
-        for ss in params.not.as_ref().unwrap().split(',') {
-            _match.insert(
-                ss,
-                doc! {
-                    "$exists":false,
-                },
-            );
-        }
-    }
-    doc! {
-        "$match":_match,
-    }
-}
-
-fn build_project_query(params: Arc<QueryOptions>) -> Document {
-    let mut _project = doc! {
-        "_id":0,
-        "createdAt":0,
     };
-    if params.parts.is_some() {
-        _project = doc! {"_id":0};
-        for part in params.parts.as_ref().unwrap().split(',') {
-            _project.insert(part, 1);
+    for (k, v) in params {
+        if v.as_str().is_none() {
+            continue; // 这个基本不会用到，因为我们是从http query上解析的Document，键值都是string类型
         }
+        let val = v.as_str().unwrap();
+        let key = k.as_str();
+        match val {
+            "$exists" => {
+                _match.insert(
+                    key,
+                    doc! {
+                        "$exists":true,
+                    },
+                );
+            }
+            "" => {
+                _match.insert(
+                    key,
+                    doc! {
+                        "$exists":false,
+                    },
+                );
+            }
+            "$addToSet" => {
+                _group.insert(
+                    key,
+                    doc! {
+                        "$addToSet":key,
+                    },
+                );
+            }
+            "$project" => {
+                _project.insert("_id", 0);
+                _project.insert(key, 1);
+            }
+
+            _ => match key {
+                "$gt" => {}
+                "$lg" => {}
+                "$count" => {
+                    _count.insert("$count", val);
+                }
+                "$group" => {
+                    _group.insert("_id", val);
+                    _group.insert("count", doc! {"$sum":1});
+                    _sort_limit_skip.insert("$sort", doc! {"count":-1});
+                }
+                "$sort" => {
+                    _sort_limit_skip.insert("$sort", doc! {val:-1});
+                }
+                "$limit" => {
+                    _sort_limit_skip.insert("$limit", val);
+                }
+                "$skip" => {
+                    _sort_limit_skip.insert("$skip", val);
+                }
+                _ => {
+                    _match.insert(key, val);
+                }
+            },
+        };
     }
-    doc! {
-        "$project":_project,
+    if _project.is_empty() {
+        _project = doc! {
+            "_id":0,
+            "createdAt":0,
+        };
     }
+    pipeline.push(doc! {"$match":_match});
+    if _count.is_empty() {
+        if _group.is_empty() {
+            pipeline.push(doc! {"$project":_project});
+        } else {
+            pipeline.push(doc! {"$group":_group})
+        }
+        pipeline.push(_sort_limit_skip);
+    } else {
+        pipeline.push(_count);
+    }
+
+    pipeline
 }
