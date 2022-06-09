@@ -57,10 +57,10 @@ impl DbConnection {
         params: Document,
     ) -> Result<Vec<Document>, Box<dyn std::error::Error>> {
         let mut result: Vec<Document> = Vec::new();
-        let pipeline = build_query(params);
         if self.db.is_none() {
             return Ok(result);
         }
+        let pipeline = build_query(params);
         let options = None;
         let collection = self.db.as_ref().unwrap().collection::<Document>(collection);
         let mut cursor = collection.aggregate(pipeline, options).await?;
@@ -83,11 +83,16 @@ fn build_query(params: Document) -> Vec<Document> {
     let mut _group = doc! {};
     let mut _project = doc! {};
     let mut _count = doc! {};
-    let mut _sort_limit_skip = doc! {
+    let mut _sort = doc! {
         "$sort":{
             "createdAt":-1,
-        }
+        },
     };
+    let mut _limit = doc! {
+        "$limit":100
+    };
+    let mut _skip = doc! {};
+
     for (k, v) in params {
         if v.as_str().is_none() {
             continue; // 这个基本不会用到，因为我们是从http query上解析的Document，键值都是string类型
@@ -133,16 +138,22 @@ fn build_query(params: Document) -> Vec<Document> {
                 "$group" => {
                     _group.insert("_id", val);
                     _group.insert("count", doc! {"$sum":1});
-                    _sort_limit_skip.insert("$sort", doc! {"count":-1});
+                    _sort.insert("$sort", doc! {"count":-1});
                 }
                 "$sort" => {
-                    _sort_limit_skip.insert("$sort", doc! {val:-1});
+                    _sort.insert("$sort", doc! {val:-1});
                 }
                 "$limit" => {
-                    _sort_limit_skip.insert("$limit", val);
+                    let num = val.parse::<i64>();
+                    if num.is_ok() {
+                        _limit.insert("$limit", num.unwrap());
+                    }
                 }
                 "$skip" => {
-                    _sort_limit_skip.insert("$skip", val);
+                    let num = val.parse::<i64>();
+                    if num.is_ok() {
+                        _skip.insert("$skip", num.unwrap());
+                    }
                 }
                 _ => {
                     _match.insert(key, val);
@@ -163,7 +174,11 @@ fn build_query(params: Document) -> Vec<Document> {
         } else {
             pipeline.push(doc! {"$group":_group})
         }
-        pipeline.push(_sort_limit_skip);
+        pipeline.push(_sort);
+        pipeline.push(_limit);
+        if !_skip.is_empty() {
+            pipeline.push(_skip)
+        }
     } else {
         pipeline.push(_count);
     }
