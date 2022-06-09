@@ -115,7 +115,7 @@ fn build_query(params: Document) -> Vec<Document> {
                 _group.insert(
                     key,
                     doc! {
-                        "$addToSet":key,
+                        "$addToSet":"$".to_string()+key,
                     },
                 );
             }
