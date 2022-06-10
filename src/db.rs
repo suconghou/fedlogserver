@@ -139,10 +139,8 @@ fn build_query(params: Document) -> Vec<Document> {
             }
 
             _ => match key {
-                "$gt" => {}
-                "$lg" => {}
                 "$count" => {
-                    _count.insert("$count", val);
+                    _count.insert("$count", val.trim_start_matches("$"));
                 }
                 "$group" => {
                     _group.insert("_id", val);
@@ -150,22 +148,42 @@ fn build_query(params: Document) -> Vec<Document> {
                     _sort.insert("$sort", doc! {"count":-1});
                 }
                 "$sort" => {
-                    _sort.insert("$sort", doc! {val:-1});
+                    if val.starts_with("$") {
+                        _sort.insert("$sort", doc! {val.trim_start_matches("$"):1});
+                    } else {
+                        _sort.insert("$sort", doc! {val:-1});
+                    }
                 }
                 "$limit" => {
                     let num = val.parse::<i64>();
                     if num.is_ok() {
-                        _limit.insert("$limit", num.unwrap());
+                        let num = num.unwrap();
+                        _limit.insert(
+                            "$limit",
+                            match num {
+                                1..=1000 => num,
+                                _ => 10,
+                            },
+                        );
                     }
                 }
                 "$skip" => {
                     let num = val.parse::<i64>();
                     if num.is_ok() {
-                        _skip.insert("$skip", num.unwrap());
+                        let num = num.unwrap();
+                        _skip.insert(
+                            "$skip",
+                            match num {
+                                1..=1000 => num,
+                                _ => 0,
+                            },
+                        );
                     }
                 }
                 _ => {
-                    _match.insert(key, val);
+                    if !key.starts_with("$") {
+                        _match.insert(key, val);
+                    }
                 }
             },
         };

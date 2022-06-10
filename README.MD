@@ -16,3 +16,27 @@ export MONGODB_URI='mongodb://192.168.0.3/test?authSource=admin&appName=ws' MONG
 
 ## 查询
 
+**特殊的键**
+
+以`$`开头的键有特殊含义
+
+$gt
+
+$count
+
+$group
+
+$sort
+
+$limit
+
+$skip
+
+**特殊的值**
+
+$exists
+
+$addToSet
+
+$project
+
