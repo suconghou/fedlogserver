@@ -117,16 +117,25 @@ fn build_query(params: Document) -> Vec<Document> {
                 );
             }
             "$addToSet" => {
-                _group.insert(
-                    key,
-                    doc! {
-                        "$addToSet":"$".to_string()+key,
-                    },
-                );
+                if key.starts_with("$") {
+                    _group.insert(
+                        key.trim_start_matches("$"),
+                        doc! {
+                            "$addToSet":key,
+                        },
+                    );
+                } else {
+                    _group.insert(
+                        key,
+                        doc! {
+                            "$addToSet":"$".to_string()+key,
+                        },
+                    );
+                }
             }
             "$project" => {
                 _project.insert("_id", 0);
-                _project.insert(key, 1);
+                _project.insert(key.trim_start_matches("$"), 1);
             }
 
             _ => match key {
@@ -169,10 +178,10 @@ fn build_query(params: Document) -> Vec<Document> {
     }
     pipeline.push(doc! {"$match":_match});
     if _count.is_empty() {
-        if _group.is_empty() {
-            pipeline.push(doc! {"$project":_project});
-        } else {
+        if _group.contains_key("_id") {
             pipeline.push(doc! {"$group":_group})
+        } else {
+            pipeline.push(doc! {"$project":_project});
         }
         pipeline.push(_sort);
         pipeline.push(_limit);
