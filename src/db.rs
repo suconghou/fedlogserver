@@ -73,11 +73,10 @@ impl DbConnection {
 
 fn build_query(params: Document) -> Vec<Document> {
     let mut pipeline = Vec::new();
-    let hour = params.get_str("$gt").unwrap_or("6").parse().unwrap_or(6);
-    let gt = recent(hour);
     let mut _match = doc! {
         "createdAt":{
-            "$gt":DateTime::from_system_time(gt),
+            "$gt":DateTime::from_system_time(recent(params.get_str("$gt").unwrap_or("6").parse().unwrap_or(6))),
+            "$lt":DateTime::from_system_time(recent(params.get_str("$lt").unwrap_or("0").parse().unwrap_or(0))),
         }
     };
     let mut _group = doc! {};

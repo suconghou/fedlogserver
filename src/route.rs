@@ -8,7 +8,6 @@ use mongodb::bson::Document;
 
 use std::sync::Arc;
 
-
 #[get("/")]
 async fn hello() -> impl Responder {
     HttpResponse::Ok().body("Hello world!")
@@ -32,9 +31,7 @@ async fn aggregate(
     group: web::Path<String>,
 ) -> impl Responder {
     let group = group.into_inner();
-    let res = db_conn
-        .aggregate(&group, params.into_inner())
-        .await;
+    let res = db_conn.aggregate(&group, params.into_inner()).await;
     if res.is_err() {
         return HttpResponse::InternalServerError().body(format!("{:?}", res.err().unwrap()));
     }
