@@ -13,7 +13,7 @@ use std::{
 
 lazy_static! {
     pub static ref USERS: Conns = Conns::new();
-    pub static ref QUEUE: RwLock<Queue<Arc<QueueItem>>> = RwLock::new(Queue::new());
+    pub static ref QUEUE: RwLock<Queue<QueueItem>> = RwLock::new(Queue::new());
 }
 
 pub struct Conns {
@@ -32,7 +32,7 @@ pub struct QueueItem {
     pub ua: String,
     pub ip: String,
     pub refer: String,
-    pub data: GroupMsg,
+    pub data: Arc<GroupMsg>,
 }
 
 impl Conns {
@@ -51,13 +51,8 @@ impl Conns {
         u.remove(&id);
     }
 
-    fn each(&self, group: &String, data: &str, bin: Bytes) {
+    fn each(&self, msg: Arc<GroupMsg>) {
         let u = self.data.read().unwrap();
-        let msg = Arc::new(GroupMsg {
-            group: group.clone(),
-            data: data.trim().to_string(),
-            bytes: bin,
-        });
         for item in u.values() {
             item.do_send(msg.clone());
         }
@@ -95,9 +90,17 @@ impl Actor for WsConn {
 impl StreamHandler<Result<Message, ProtocolError>> for WsConn {
     fn handle(&mut self, msg: Result<Message, ProtocolError>, ctx: &mut Self::Context) {
         match msg {
-            Ok(Message::Text(text)) => USERS.each(&self.group, &text, Bytes::new()),
+            Ok(Message::Text(text)) => USERS.each(Arc::new(GroupMsg {
+                group: self.group.clone(),
+                data: text.to_string(),
+                bytes: Bytes::new(),
+            })),
             Ok(Message::Ping(msg)) => ctx.pong(&msg),
-            Ok(Message::Binary(bin)) => USERS.each(&self.group, "", bin),
+            Ok(Message::Binary(bin)) => USERS.each(Arc::new(GroupMsg {
+                group: self.group.clone(),
+                data: "".to_string(),
+                bytes: bin,
+            })),
             Ok(Message::Close(reason)) => ctx.close(reason),
             _ => (),
         }
@@ -120,14 +123,14 @@ impl Handler<Arc<GroupMsg>> for WsConn {
 }
 
 #[inline]
-fn get_item() -> Option<Arc<QueueItem>> {
+fn get_item() -> Option<QueueItem> {
     if QUEUE.read().unwrap().is_empty() {
         return None;
     }
     QUEUE.write().unwrap().pop()
 }
 
-fn tidy_it(res: &mut Value, v: &Arc<QueueItem>) {
+fn tidy_it(res: &mut Value, v: &QueueItem) {
     res["time"] = serde_json::json!(util::unix_time());
     res["ip"] = Value::String(v.ip.clone());
     res["ua"] = Value::String(v.ua.clone());
@@ -149,7 +152,7 @@ fn tidy_it(res: &mut Value, v: &Arc<QueueItem>) {
 pub async fn taskloop(store: Arc<DbConnection>) {
     loop {
         if let Some(v) = get_item() {
-            USERS.each(&v.data.group, &v.data.data, v.data.bytes.clone());
+            USERS.each(v.data.clone());
             if !store.ok() {
                 tokio::time::sleep(Duration::from_millis(10)).await;
                 continue;

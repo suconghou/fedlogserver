@@ -73,29 +73,29 @@ async fn error_log(
         return match std::str::from_utf8(&bytes) {
             Err(e) => HttpResponse::BadRequest().body(format!("{:?}", e)),
             Ok(data) => {
-                QUEUE.write().unwrap().push(Arc::new(QueueItem {
+                QUEUE.write().unwrap().push(QueueItem {
                     ua,
                     ip,
                     refer,
-                    data: GroupMsg {
+                    data: Arc::new(GroupMsg {
                         group,
                         data: data.trim().to_string(),
                         bytes: web::Bytes::new(),
-                    },
-                }));
+                    }),
+                });
                 HttpResponse::Ok().body("")
             }
         };
     }
-    QUEUE.write().unwrap().push(Arc::new(QueueItem {
+    QUEUE.write().unwrap().push(QueueItem {
         ua,
         ip,
         refer,
-        data: GroupMsg {
+        data: Arc::new(GroupMsg {
             group,
             data: "".to_owned(),
             bytes,
-        },
-    }));
+        }),
+    });
     HttpResponse::Ok().body("")
 }
