@@ -92,7 +92,7 @@ impl StreamHandler<Result<Message, ProtocolError>> for WsConn {
         match msg {
             Ok(Message::Text(text)) => USERS.each(Arc::new(GroupMsg {
                 group: self.group.clone(),
-                data: text.to_string(),
+                data: text.trim().to_string(),
                 bytes: Bytes::new(),
             })),
             Ok(Message::Ping(msg)) => ctx.pong(&msg),
@@ -151,28 +151,34 @@ fn tidy_it(res: &mut Value, v: &QueueItem) {
 
 pub async fn taskloop(store: Arc<DbConnection>) {
     loop {
-        if let Some(v) = get_item() {
-            USERS.each(v.data.clone());
-            if !store.ok() {
-                tokio::time::sleep(Duration::from_millis(10)).await;
-                continue;
-            }
-            if v.data.data.len() > 0 && v.data.data.len() < 8192 {
-                let mut res: Value = serde_json::from_str(&v.data.data).unwrap_or_default();
-                if res.is_object() {
-                    tidy_it(&mut res, &v);
-                    store.save(&v.data.group, res).await;
-                }
-            }
-            if v.data.bytes.len() > 0 && v.data.bytes.len() < 8192 {
-                let mut res: Value = serde_json::from_slice(&v.data.bytes).unwrap_or_default();
-                if res.is_object() {
-                    tidy_it(&mut res, &v);
-                    store.save(&v.data.group, res).await;
-                }
-            }
-        } else {
+        let item = get_item();
+        if item.is_none() {
             tokio::time::sleep(Duration::from_secs(1)).await;
+            continue;
+        }
+        let v = item.unwrap();
+        USERS.each(v.data.clone());
+        if !store.ok() {
+            tokio::time::sleep(Duration::from_millis(10)).await;
+            continue;
+        }
+        if v.data.data.len() > 0 && v.data.data.len() < 8192 {
+            let j: Result<Value, serde_json::Error> = serde_json::from_str(&v.data.data);
+            if let Ok(mut res) = j {
+                if res.is_object() {
+                    tidy_it(&mut res, &v);
+                    store.save(&v.data.group, res).await;
+                }
+            }
+        }
+        if v.data.bytes.len() > 0 && v.data.bytes.len() < 8192 {
+            let j: Result<Value, serde_json::Error> = serde_json::from_slice(&v.data.bytes);
+            if let Ok(mut res) = j {
+                if res.is_object() {
+                    tidy_it(&mut res, &v);
+                    store.save(&v.data.group, res).await;
+                }
+            }
         }
         tokio::time::sleep(Duration::from_millis(5)).await;
     }
