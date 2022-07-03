@@ -79,7 +79,7 @@ async fn error_log(
                     refer,
                     data: Arc::new(GroupMsg {
                         group,
-                        data: data.trim().to_string(),
+                        data: data.trim().to_owned(),
                         bytes: web::Bytes::new(),
                     }),
                 });

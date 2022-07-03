@@ -40,7 +40,7 @@ async fn main() -> std::io::Result<()> {
 }
 
 fn opt() -> String {
-    let mut opts: Vec<String> = vec![env::var("ADDR").unwrap_or("127.0.0.1:8080".to_string())];
+    let mut opts: Vec<String> = vec![env::var("ADDR").unwrap_or("127.0.0.1:8080".to_owned())];
     let mut index = 0;
     let mut first = true;
     for argument in env::args() {

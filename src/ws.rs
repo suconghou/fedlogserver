@@ -92,13 +92,13 @@ impl StreamHandler<Result<Message, ProtocolError>> for WsConn {
         match msg {
             Ok(Message::Text(text)) => USERS.each(Arc::new(GroupMsg {
                 group: self.group.clone(),
-                data: text.trim().to_string(),
+                data: text.trim().to_owned(),
                 bytes: Bytes::new(),
             })),
             Ok(Message::Ping(msg)) => ctx.pong(&msg),
             Ok(Message::Binary(bin)) => USERS.each(Arc::new(GroupMsg {
                 group: self.group.clone(),
-                data: "".to_string(),
+                data: "".to_owned(),
                 bytes: bin,
             })),
             Ok(Message::Close(reason)) => ctx.close(reason),
@@ -138,7 +138,7 @@ fn tidy_it(res: &mut Value, v: &QueueItem) {
         Some(rr) => match rr.as_str() {
             Some(vv) => {
                 if vv.len() > 0 {
-                    Value::String(vv.to_string())
+                    Value::String(vv.to_owned())
                 } else {
                     Value::String(v.refer.clone())
                 }
