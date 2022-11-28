@@ -13,15 +13,16 @@ pub struct DbConnection {
 
 impl DbConnection {
     pub async fn new() -> Self {
-        let db = env::var("MONGODB_DATABASE");
-        let uri = env::var("MONGODB_URI");
-        if db.is_err() || uri.is_err() {
+        let Ok(db) = env::var("MONGODB_DATABASE") else {
             return Self { db: None };
-        }
-        let client_options = ClientOptions::parse(uri.unwrap()).await.unwrap_or_default();
+        };
+        let Ok(uri) = env::var("MONGODB_URI") else {
+            return Self { db: None };
+        };
+        let client_options = ClientOptions::parse(uri).await.unwrap_or_default();
         match Client::with_options(client_options) {
             Ok(client) => Self {
-                db: Some(client.database(&db.unwrap())),
+                db: Some(client.database(&db)),
             },
             Err(_) => Self { db: None },
         }
@@ -32,14 +33,14 @@ impl DbConnection {
     }
 
     pub async fn save(&self, collection: &str, data: Value) {
-        if self.db.is_none() {
+        let Some(db) = &self.db else {
             return;
-        }
+        };
         match to_bson(&data) {
             Ok(mut b) => match b.as_document_mut() {
                 Some(doc) => {
                     doc.insert("createdAt", DateTime::now());
-                    let collection = self.db.as_ref().unwrap().collection::<Document>(collection);
+                    let collection = db.collection::<Document>(collection);
                     let r = collection.insert_one(doc, None).await;
                     if r.is_err() {
                         println!("{:?}", r.err().unwrap());
@@ -57,12 +58,12 @@ impl DbConnection {
         params: Document,
     ) -> Result<Vec<Document>, Box<dyn std::error::Error>> {
         let mut result: Vec<Document> = Vec::new();
-        if self.db.is_none() {
+        let Some(db) = &self.db else {
             return Ok(result);
-        }
+        };
         let pipeline = build_query(params);
         let options = None;
-        let collection = self.db.as_ref().unwrap().collection::<Document>(collection);
+        let collection = db.collection::<Document>(collection);
         let mut cursor = collection.aggregate(pipeline, options).await?;
         while let Some(item) = cursor.try_next().await? {
             result.push(item);
