@@ -138,10 +138,9 @@ fn tidy_it(res: &mut Value, v: &QueueItem) {
         Some(rr) => match rr.as_str() {
             Some(vv) => {
                 if vv.len() > 0 {
-                    Value::String(vv.to_owned())
-                } else {
-                    Value::String(v.refer.clone())
+                    return;
                 }
+                Value::String(v.refer.clone())
             }
             None => Value::String(v.refer.clone()),
         },
@@ -151,12 +150,10 @@ fn tidy_it(res: &mut Value, v: &QueueItem) {
 
 pub async fn taskloop(store: Arc<DbConnection>) {
     loop {
-        let item = get_item();
-        if item.is_none() {
+        let Some(v) = get_item() else {
             tokio::time::sleep(Duration::from_secs(1)).await;
             continue;
-        }
-        let v = item.unwrap();
+        };
         USERS.each(v.data.clone());
         if !store.ok() {
             tokio::time::sleep(Duration::from_millis(10)).await;

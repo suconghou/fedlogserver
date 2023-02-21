@@ -94,10 +94,9 @@ fn build_query(params: Document) -> Vec<Document> {
     let mut _skip = doc! {};
 
     for (k, v) in params {
-        if v.as_str().is_none() {
+        let Some(val) = v.as_str() else {
             continue; // 这个基本不会用到，因为我们是从http query上解析的Document，键值都是string类型
-        }
-        let val = v.as_str().unwrap();
+        };
         let key = k.as_str();
         match val {
             "$exists" => {
