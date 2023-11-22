@@ -4,8 +4,7 @@ use mongodb::Database;
 use mongodb::{options::ClientOptions, Client};
 use serde_json::Value;
 use std::env;
-
-use crate::util::recent;
+use std::time::{Duration, SystemTime};
 
 pub struct DbConnection {
     db: Option<Database>,
@@ -74,12 +73,7 @@ impl DbConnection {
 
 fn build_query(params: Document) -> Vec<Document> {
     let mut pipeline = Vec::new();
-    let mut _match = doc! {
-        "createdAt":{
-            "$gt":DateTime::from_system_time(recent(params.get_str("$gt").unwrap_or("6").parse().unwrap_or(6))),
-            "$lt":DateTime::from_system_time(recent(params.get_str("$lt").unwrap_or("0").parse().unwrap_or(0))),
-        }
-    };
+    let mut _match = doc! {"createdAt": build_time_filter(&params)};
     let mut _group = doc! {};
     let mut _project = doc! {};
     let mut _count = doc! {};
@@ -142,7 +136,14 @@ fn build_query(params: Document) -> Vec<Document> {
                     _count.insert("$count", val.trim_start_matches("$"));
                 }
                 "$group" => {
-                    _group.insert("_id", val);
+                    if val.contains("%") {
+                        _group.insert(
+                            "_id",
+                            doc! { "$dateToString":{"format":val, "date":"$createdAt"} },
+                        );
+                    } else {
+                        _group.insert("_id", val);
+                    }
                     _group.insert("count", doc! {"$sum":1});
                     _sort.insert("$sort", doc! {"count":-1});
                 }
@@ -154,9 +155,7 @@ fn build_query(params: Document) -> Vec<Document> {
                     }
                 }
                 "$limit" => {
-                    let num = val.parse::<i64>();
-                    if num.is_ok() {
-                        let num = num.unwrap();
+                    if let Ok(num) = val.parse::<i64>() {
                         _limit.insert(
                             "$limit",
                             match num {
@@ -167,9 +166,7 @@ fn build_query(params: Document) -> Vec<Document> {
                     }
                 }
                 "$skip" => {
-                    let num = val.parse::<i64>();
-                    if num.is_ok() {
-                        let num = num.unwrap();
+                    if let Ok(num) = val.parse::<i64>() {
                         _skip.insert(
                             "$skip",
                             match num {
@@ -210,4 +207,24 @@ fn build_query(params: Document) -> Vec<Document> {
     }
 
     pipeline
+}
+
+fn build_time_filter(params: &Document) -> Document {
+    let mut created_at = doc! {};
+    if let Ok(v) = params.get_str("$lt") {
+        if let Ok(n) = v.parse::<i64>() {
+            created_at.insert("$lt", DateTime::from_millis(1000 * n));
+        }
+    }
+    if let Ok(v) = params.get_str("$gt") {
+        if let Ok(n) = v.parse::<i64>() {
+            created_at.insert("$gt", DateTime::from_millis(1000 * n));
+            return created_at;
+        }
+    }
+    created_at.insert(
+        "$gt",
+        DateTime::from_system_time(SystemTime::now() - Duration::new(3600, 0)),
+    );
+    created_at
 }
