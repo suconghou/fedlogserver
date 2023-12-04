@@ -139,7 +139,7 @@ fn build_query(params: Document) -> Vec<Document> {
                     if val.contains("%") {
                         _group.insert(
                             "_id",
-                            doc! { "$dateToString":{"format":val, "date":"$createdAt"} },
+                            doc! { "$dateToString":{"format":val, "date":"$createdAt","timezone":"Asia/Shanghai"} },
                         );
                     } else {
                         _group.insert("_id", val);
