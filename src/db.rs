@@ -102,12 +102,14 @@ fn build_query(params: Document) -> Vec<Document> {
                 );
             }
             "" => {
-                _match.insert(
-                    key,
-                    doc! {
-                        "$exists":false,
-                    },
-                );
+                if !key.starts_with("$") {
+                    _match.insert(
+                        key,
+                        doc! {
+                            "$exists":false,
+                        },
+                    );
+                }
             }
             "$addToSet" => {
                 if key.starts_with("$") {
