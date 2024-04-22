@@ -138,7 +138,7 @@ fn tidy_it(res: &mut Value, v: &QueueItem) {
         Some(rr) => match rr.as_str() {
             Some(vv) => {
                 if vv.len() > 0 {
-                    return;
+                    return; // 注意：此处是tidy_it函数直接返回，因此res["refer"]的值未修改
                 }
                 Value::String(v.refer.clone())
             }
