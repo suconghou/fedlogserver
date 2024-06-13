@@ -40,19 +40,7 @@ async fn main() -> std::io::Result<()> {
 }
 
 fn opt() -> String {
-    let mut opts: Vec<String> = vec![env::var("ADDR").unwrap_or("127.0.0.1:8080".to_owned())];
-    let mut index = 0;
-    let mut first = true;
-    for argument in env::args() {
-        if first {
-            first = false;
-            continue;
-        }
-        if index >= 1 {
-            break;
-        }
-        opts[index] = argument;
-        index = index + 1;
-    }
-    opts[0].clone()
+    env::args()
+        .nth(1)
+        .unwrap_or_else(|| env::var("ADDR").unwrap_or("127.0.0.1:8080".to_owned()))
 }
