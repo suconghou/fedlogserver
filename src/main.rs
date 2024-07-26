@@ -1,6 +1,3 @@
-#[macro_use]
-extern crate lazy_static;
-
 use actix_web::{
     http::header::ACCESS_CONTROL_ALLOW_ORIGIN, middleware, web::Data, App, HttpServer,
 };

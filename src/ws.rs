@@ -8,13 +8,11 @@ use serde_json::Value;
 use std::time::Duration;
 use std::{
     collections::HashMap,
-    sync::{Arc, RwLock},
+    sync::{Arc, LazyLock, RwLock},
 };
 
-lazy_static! {
-    pub static ref USERS: Conns = Conns::new();
-    pub static ref QUEUE: RwLock<Queue<QueueItem>> = RwLock::new(Queue::new());
-}
+pub static USERS: LazyLock<Conns> = LazyLock::new(|| Conns::new());
+pub static QUEUE: LazyLock<RwLock<Queue<QueueItem>>> = LazyLock::new(|| RwLock::new(Queue::new()));
 
 pub struct Conns {
     data: RwLock<HashMap<u64, Addr<WsConn>>>,

@@ -1,11 +1,10 @@
 use std::{
     sync::atomic::{AtomicU64, Ordering},
+    sync::LazyLock,
     time::{SystemTime, UNIX_EPOCH},
 };
 
-lazy_static! {
-    static ref N: AtomicU64 = AtomicU64::new(1);
-}
+static N: LazyLock<AtomicU64> = LazyLock::new(|| AtomicU64::new(1));
 
 pub fn uniqid() -> u64 {
     N.fetch_add(1, Ordering::Relaxed)
