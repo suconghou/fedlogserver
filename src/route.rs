@@ -24,7 +24,7 @@ async fn status() -> impl Responder {
         .json(data)
 }
 
-#[get("/stat/error_log/aggregate/{group:[\\w\\-]{1,20}}")]
+#[get("/aggregate/{group:[\\w\\-]{1,20}}")]
 async fn aggregate(
     params: web::Query<Document>,
     db_conn: web::Data<Arc<DbConnection>>,
@@ -38,7 +38,7 @@ async fn aggregate(
     HttpResponse::Ok().json(res.unwrap())
 }
 
-#[get("/stat/error_log/ws/{group:[\\w\\-]{1,20}}")]
+#[get("/ws/{group:[\\w\\-]{1,20}}")]
 async fn ws(req: HttpRequest, stream: web::Payload, group: web::Path<String>) -> impl Responder {
     let group = group.into_inner();
     let conn = WsConn {
