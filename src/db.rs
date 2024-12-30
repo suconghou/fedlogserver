@@ -130,7 +130,10 @@ fn build_query(params: Document) -> Vec<Document> {
             }
             "$project" => {
                 _project.insert("_id", 0);
-                _project.insert(key.trim_start_matches("$"), 1);
+                _project.insert(
+                    key.trim_start_matches("$"),
+                    if key.starts_with("$") { 1 } else { 0 },
+                );
             }
 
             _ => match key {
