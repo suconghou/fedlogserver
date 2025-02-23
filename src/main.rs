@@ -1,9 +1,9 @@
 use actix_web::{
+    App, HttpResponse, HttpServer,
     dev::Service,
     http::header::ACCESS_CONTROL_ALLOW_ORIGIN,
     middleware,
     web::{self, Data},
-    App, HttpResponse, HttpServer,
 };
 use futures::FutureExt;
 use std::{env, sync::Arc};

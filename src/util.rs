@@ -1,6 +1,6 @@
 use std::{
-    sync::atomic::{AtomicU64, Ordering},
     sync::LazyLock,
+    sync::atomic::{AtomicU64, Ordering},
     time::{SystemTime, UNIX_EPOCH},
 };
 

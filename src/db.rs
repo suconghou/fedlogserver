@@ -1,7 +1,7 @@
 use futures::TryStreamExt;
-use mongodb::bson::{doc, to_bson, DateTime, Document};
 use mongodb::Database;
-use mongodb::{options::ClientOptions, Client};
+use mongodb::bson::{DateTime, Document, doc, to_bson};
+use mongodb::{Client, options::ClientOptions};
 use serde_json::Value;
 use std::env;
 use std::time::{Duration, SystemTime};
