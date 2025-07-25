@@ -1,5 +1,5 @@
 use crate::db::DbConnection;
-use crate::queue::Queue;
+use crate::stat::Stat;
 use crate::util;
 use actix::{Actor, Addr, AsyncContext, Handler, StreamHandler};
 use actix_web::web::Bytes;
@@ -10,10 +10,10 @@ use std::{
     collections::HashMap,
     sync::{Arc, LazyLock, RwLock},
 };
+use tokio::sync::mpsc;
 
 pub static USERS: LazyLock<Conns> = LazyLock::new(|| Conns::new());
-pub static QUEUE: LazyLock<RwLock<Queue<QueueItem>>> = LazyLock::new(|| RwLock::new(Queue::new()));
-
+pub static QUEUE: LazyLock<Stat> = LazyLock::new(|| Stat::new());
 pub struct Conns {
     data: RwLock<HashMap<u64, Addr<WsConn>>>,
 }
@@ -120,14 +120,6 @@ impl Handler<Arc<GroupMsg>> for WsConn {
     }
 }
 
-#[inline]
-fn get_item() -> Option<QueueItem> {
-    if QUEUE.read().unwrap().is_empty() {
-        return None;
-    }
-    QUEUE.write().unwrap().pop()
-}
-
 fn tidy_it(res: &mut Value, v: &QueueItem) {
     res["time"] = serde_json::json!(util::unix_time());
     res["ip"] = Value::String(v.ip.clone());
@@ -146,13 +138,10 @@ fn tidy_it(res: &mut Value, v: &QueueItem) {
     };
 }
 
-pub async fn taskloop(store: Arc<DbConnection>) {
-    loop {
-        let Some(v) = get_item() else {
-            tokio::time::sleep(Duration::from_secs(1)).await;
-            continue;
-        };
+pub async fn taskloop(store: Arc<DbConnection>, mut rx: mpsc::Receiver<QueueItem>) {
+    while let Some(v) = rx.recv().await {
         USERS.each(v.data.clone());
+        QUEUE.sub(1);
         if !store.ok() {
             tokio::time::sleep(Duration::from_millis(10)).await;
             continue;
@@ -175,6 +164,5 @@ pub async fn taskloop(store: Arc<DbConnection>) {
                 }
             }
         }
-        tokio::time::sleep(Duration::from_millis(5)).await;
     }
 }

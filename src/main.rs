@@ -7,28 +7,23 @@ use actix_web::{
 };
 use futures::FutureExt;
 use std::{env, sync::Arc};
-use tokio::runtime::Builder;
+use tokio::sync::mpsc;
 
 mod db;
-mod queue;
 mod route;
+mod stat;
 mod util;
 mod ws;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let db_conn = Arc::new(db::DbConnection::new().await);
-    let rt = Builder::new_multi_thread()
-        .enable_all()
-        .worker_threads(2)
-        .thread_name("db")
-        .thread_stack_size(1024 * 1024)
-        .build()
-        .unwrap();
-    rt.spawn(ws::taskloop(db_conn.clone()));
+    let (tx, rx) = mpsc::channel(1024);
+    tokio::spawn(ws::taskloop(db_conn.clone(), rx));
     HttpServer::new(move || {
         App::new()
             .app_data(Data::new(db_conn.clone()))
+            .app_data(Data::new(tx.clone()))
             .wrap(middleware::DefaultHeaders::new().add((ACCESS_CONTROL_ALLOW_ORIGIN, "*")))
             .service(route::hello)
             .service(route::status)
