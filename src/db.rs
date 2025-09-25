@@ -198,14 +198,15 @@ fn build_query(params: Document) -> Vec<Document> {
     pipeline.push(doc! {"$match":_match});
     if _count.is_empty() {
         if _group.contains_key("_id") {
-            pipeline.push(doc! {"$group":_group})
+            pipeline.push(doc! {"$group":_group});
+            pipeline.push(_sort);
         } else {
+            pipeline.push(_sort);
             pipeline.push(doc! {"$project":_project});
         }
-        pipeline.push(_sort);
         pipeline.push(_limit);
         if !_skip.is_empty() {
-            pipeline.push(_skip)
+            pipeline.push(_skip);
         }
     } else {
         pipeline.push(_count);
