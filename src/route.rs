@@ -27,11 +27,10 @@ async fn aggregate(
     group: web::Path<String>,
 ) -> impl Responder {
     let group = group.into_inner();
-    let res = db_conn.aggregate(&group, params.into_inner()).await;
-    if res.is_err() {
-        return HttpResponse::InternalServerError().body(format!("{:?}", res.err().unwrap()));
+    match db_conn.aggregate(&group, params.into_inner()).await {
+        Ok(res) => HttpResponse::Ok().json(res),
+        Err(e) => HttpResponse::InternalServerError().body(format!("{:?}", e)),
     }
-    HttpResponse::Ok().json(res.unwrap())
 }
 
 #[get("/ws/{group:[\\w\\-]{1,20}}")]
@@ -86,18 +85,22 @@ async fn error_log(
 }
 
 fn extract_headers(req: &HttpRequest) -> (String, String, String) {
-    let ua = match req.headers().get(USER_AGENT) {
-        None => "".to_owned(),
-        Some(v) => v.to_str().unwrap_or_default().to_owned(),
-    };
+    let ua = req
+        .headers()
+        .get(USER_AGENT)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or_default()
+        .to_owned();
     let ip = req
         .connection_info()
         .realip_remote_addr()
         .unwrap_or("")
         .to_owned();
-    let refer = match req.headers().get(REFERER) {
-        None => "".to_owned(),
-        Some(v) => v.to_str().unwrap_or_default().to_owned(),
-    };
+    let refer = req
+        .headers()
+        .get(REFERER)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or_default()
+        .to_owned();
     (ua, ip, refer)
 }

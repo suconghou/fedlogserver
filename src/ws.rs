@@ -40,29 +40,29 @@ impl Conns {
         }
     }
     fn insert(&self, id: u64, conn: Addr<WsConn>) {
-        let mut u = self.data.write().unwrap();
-        u.insert(id, conn);
+        self.data
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .insert(id, conn);
     }
 
     fn remove(&self, id: u64) {
-        let mut u = self.data.write().unwrap();
-        u.remove(&id);
+        self.data
+            .write()
+            .unwrap_or_else(|e| e.into_inner())
+            .remove(&id);
     }
 
     fn each(&self, msg: Arc<GroupMsg>) {
-        let u = self.data.read().unwrap();
+        let u = self.data.read().unwrap_or_else(|e| e.into_inner());
         for item in u.values() {
             item.do_send(msg.clone());
         }
     }
 
     pub fn stat(&self) -> Vec<u64> {
-        let u = self.data.read().unwrap();
-        let mut s: Vec<u64> = vec![];
-        for key in u.keys() {
-            s.push(*key);
-        }
-        return s;
+        let u = self.data.read().unwrap_or_else(|e| e.into_inner());
+        u.keys().cloned().collect()
     }
 }
 

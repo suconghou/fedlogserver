@@ -40,9 +40,8 @@ impl DbConnection {
                 Some(doc) => {
                     doc.insert("createdAt", DateTime::now());
                     let collection = db.collection::<Document>(collection);
-                    let r = collection.insert_one(doc, None).await;
-                    if r.is_err() {
-                        println!("{:?}", r.err().unwrap());
+                    if let Err(r) = collection.insert_one(doc, None).await {
+                        eprintln!("{:?}", r);
                     }
                 }
                 None => (),
