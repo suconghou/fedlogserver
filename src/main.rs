@@ -24,10 +24,10 @@ fn extract_auth_token(req: &actix_web::dev::ServiceRequest) -> Option<String> {
         .or_else(|| {
             req.query_string().split('&').find_map(|param| {
                 let mut parts = param.splitn(2, '=');
-                if let (Some(key), Some(value)) = (parts.next(), parts.next()) {
-                    if key == "auth_key" {
-                        return Some(value.to_string());
-                    }
+                if let (Some(key), Some(value)) = (parts.next(), parts.next())
+                    && key == "auth_key"
+                {
+                    return Some(value.to_string());
                 }
                 None
             })
@@ -60,7 +60,7 @@ async fn main() -> std::io::Result<()> {
                                 .boxed_local();
                             }
                         }
-                        return srv.call(req);
+                        srv.call(req)
                     })
                     .service(route::aggregate)
                     .service(route::ws),

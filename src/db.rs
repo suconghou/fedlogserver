@@ -36,16 +36,15 @@ impl DbConnection {
             return;
         };
         match to_bson(&data) {
-            Ok(mut b) => match b.as_document_mut() {
-                Some(doc) => {
+            Ok(mut b) => {
+                if let Some(doc) = b.as_document_mut() {
                     doc.insert("createdAt", DateTime::now());
                     let collection = db.collection::<Document>(collection);
                     if let Err(r) = collection.insert_one(doc, None).await {
                         eprintln!("{:?}", r);
                     }
                 }
-                None => (),
-            },
+            }
             Err(e) => println!("{:?}", e),
         }
     }
@@ -216,16 +215,16 @@ fn build_query(params: Document) -> Vec<Document> {
 
 fn build_time_filter(params: &Document) -> Document {
     let mut created_at = doc! {};
-    if let Ok(v) = params.get_str("$lt") {
-        if let Ok(n) = v.parse::<i64>() {
-            created_at.insert("$lt", DateTime::from_millis(1000 * n));
-        }
+    if let Ok(v) = params.get_str("$lt")
+        && let Ok(n) = v.parse::<i64>()
+    {
+        created_at.insert("$lt", DateTime::from_millis(1000 * n));
     }
-    if let Ok(v) = params.get_str("$gt") {
-        if let Ok(n) = v.parse::<i64>() {
-            created_at.insert("$gt", DateTime::from_millis(1000 * n));
-            return created_at;
-        }
+    if let Ok(v) = params.get_str("$gt")
+        && let Ok(n) = v.parse::<i64>()
+    {
+        created_at.insert("$gt", DateTime::from_millis(1000 * n));
+        return created_at;
     }
     created_at.insert(
         "$gt",

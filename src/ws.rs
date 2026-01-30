@@ -12,8 +12,8 @@ use std::{
 };
 use tokio::sync::mpsc;
 
-pub static USERS: LazyLock<Conns> = LazyLock::new(|| Conns::new());
-pub static QUEUE: LazyLock<Stat> = LazyLock::new(|| Stat::new());
+pub static USERS: LazyLock<Conns> = LazyLock::new(Conns::new);
+pub static QUEUE: LazyLock<Stat> = LazyLock::new(Stat::new);
 pub struct Conns {
     data: RwLock<HashMap<u64, Addr<WsConn>>>,
 }
@@ -110,10 +110,10 @@ impl Handler<Arc<GroupMsg>> for WsConn {
 
     fn handle(&mut self, gm: Arc<GroupMsg>, ctx: &mut Self::Context) -> Self::Result {
         if self.group == gm.group {
-            if gm.data.len() > 0 {
+            if !gm.data.is_empty() {
                 ctx.text(gm.data.clone());
             }
-            if gm.bytes.len() > 0 {
+            if !gm.bytes.is_empty() {
                 ctx.binary(gm.bytes.clone())
             }
         }
@@ -127,7 +127,7 @@ fn tidy_it(res: &mut Value, v: &QueueItem) {
     res["refer"] = match res.get("refer") {
         Some(rr) => match rr.as_str() {
             Some(vv) => {
-                if vv.len() > 0 {
+                if !vv.is_empty() {
                     return; // 注意：此处是tidy_it函数直接返回，因此res["refer"]的值未修改
                 }
                 Value::String(v.refer.clone())
@@ -146,22 +146,22 @@ pub async fn taskloop(store: Arc<DbConnection>, mut rx: mpsc::Receiver<QueueItem
             tokio::time::sleep(Duration::from_millis(10)).await;
             continue;
         }
-        if v.data.data.len() > 0 && v.data.data.len() < 8192 {
+        if !v.data.data.is_empty() && v.data.data.len() < 8192 {
             let j: Result<Value, serde_json::Error> = serde_json::from_str(&v.data.data);
-            if let Ok(mut res) = j {
-                if res.is_object() {
-                    tidy_it(&mut res, &v);
-                    store.save(&v.data.group, res).await;
-                }
+            if let Ok(mut res) = j
+                && res.is_object()
+            {
+                tidy_it(&mut res, &v);
+                store.save(&v.data.group, res).await;
             }
         }
-        if v.data.bytes.len() > 0 && v.data.bytes.len() < 8192 {
+        if !v.data.bytes.is_empty() && v.data.bytes.len() < 8192 {
             let j: Result<Value, serde_json::Error> = serde_json::from_slice(&v.data.bytes);
-            if let Ok(mut res) = j {
-                if res.is_object() {
-                    tidy_it(&mut res, &v);
-                    store.save(&v.data.group, res).await;
-                }
+            if let Ok(mut res) = j
+                && res.is_object()
+            {
+                tidy_it(&mut res, &v);
+                store.save(&v.data.group, res).await;
             }
         }
     }
