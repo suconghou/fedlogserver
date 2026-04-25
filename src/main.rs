@@ -38,8 +38,10 @@ fn extract_auth_token(req: &actix_web::dev::ServiceRequest) -> Option<String> {
 async fn main() -> std::io::Result<()> {
     let db_conn = Arc::new(db::DbConnection::new().await);
     let (tx, rx) = mpsc::channel(1024);
+    let auth_key = Arc::new(env::var("AUTH_KEY").unwrap_or_default());
     tokio::spawn(ws::taskloop(db_conn.clone(), rx));
     HttpServer::new(move || {
+        let auth_key = auth_key.clone();
         App::new()
             .app_data(Data::new(db_conn.clone()))
             .app_data(Data::new(tx.clone()))
@@ -49,11 +51,10 @@ async fn main() -> std::io::Result<()> {
             .service(route::error_log)
             .service(
                 web::scope("/stat/error_log")
-                    .wrap_fn(|req, srv| {
-                        let key = env::var("AUTH_KEY").unwrap_or("".to_owned());
-                        if !key.is_empty() {
+                    .wrap_fn(move |req, srv| {
+                        if !auth_key.is_empty() {
                             let t = extract_auth_token(&req).unwrap_or_default();
-                            if t != key {
+                            if t != auth_key.as_str() {
                                 return async {
                                     Ok(req.into_response(HttpResponse::Unauthorized()))
                                 }
